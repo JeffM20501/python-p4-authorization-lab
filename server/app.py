@@ -41,7 +41,7 @@ class ShowArticle(Resource):
         article_json = article.to_dict()
 
         if not session.get('user_id'):
-            session['page_views'] = 0 if not session.get('page_views') else session.get('page_views')
+            session['page_views'] = session.get('page_views', 0)
             session['page_views'] += 1
 
             if session['page_views'] <= 3:
@@ -84,15 +84,24 @@ class CheckSession(Resource):
         
         return {}, 401
 
+@app.before_request
+def check_if_member():
+    if not session.get('user_id'):
+        if request.endpoint in ['member_index', 'member_article']:
+            return {'error': 'Unauthorized'}, 401
+        
 class MemberOnlyIndex(Resource):
     
     def get(self):
-        pass
+        articles=Article.query.filter(Article.is_member_only==True).all()
+        article_dict=[a.to_dict() for a in articles]
+        return make_response(jsonify(article_dict), 200)
 
 class MemberOnlyArticle(Resource):
     
     def get(self, id):
-        pass
+        article_dict=Article.query.filter(Article.id==id).first().to_dict()
+        return make_response(jsonify(article_dict), 200)
 
 api.add_resource(ClearSession, '/clear', endpoint='clear')
 api.add_resource(IndexArticle, '/articles', endpoint='article_list')
